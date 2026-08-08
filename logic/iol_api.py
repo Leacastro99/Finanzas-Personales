@@ -21,3 +21,18 @@ def obtener_portafolio(token):
     respuesta = requests.get(url, headers=headers)
     respuesta.raise_for_status()
     return respuesta.json()
+
+
+def obtener_operaciones(token, fecha_desde, fecha_hasta):
+    """Trae el historial de operaciones desde la API de IOL."""
+    url = "https://api.invertironline.com/api/v2/operaciones"
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {
+        "filtro.fechaDesde": fecha_desde,
+        "filtro.fechaHasta": fecha_hasta,
+        "filtro.estado": "terminadas",
+        "filtro.pais": "argentina",
+    }
+    respuesta = requests.get(url, headers=headers, params=params)
+    respuesta.raise_for_status()
+    return respuesta.json()
