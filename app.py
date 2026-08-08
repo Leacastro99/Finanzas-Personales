@@ -1,5 +1,6 @@
 import streamlit as st
 from logic.iol_api import obtener_token, obtener_portafolio
+from logic.portafolio import portafolio_a_tabla
 
 def mostrar_login():
     st.title("Iniciar sesión")
@@ -22,7 +23,8 @@ else:
     try:
         token = obtener_token()
         portafolio = obtener_portafolio(token)
+        tabla = portafolio_a_tabla(portafolio)
         st.success("Conexión con IOL exitosa ✅")
-        st.json(portafolio)
+        st.dataframe(tabla)
     except Exception:
         st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
