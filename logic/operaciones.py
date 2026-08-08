@@ -10,7 +10,7 @@ MAPEO_SIMBOLOS_D = {
 
 def operaciones_a_tabla(operaciones_json):
     """Convierte el JSON crudo de operaciones en una tabla limpia, filtrada y mapeada."""
-    tabla = pd.DataFrame(operaciones_json["operations"])
+    tabla = pd.DataFrame(operaciones_json)
 
     # Solo operaciones efectivamente concretadas
     tabla = tabla[tabla["status"] == "Terminada"].copy()
