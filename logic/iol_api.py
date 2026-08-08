@@ -12,3 +12,12 @@ def obtener_token():
     respuesta = requests.post(url, data=datos)
     respuesta.raise_for_status()
     return respuesta.json()["access_token"]
+
+
+def obtener_portafolio(token):
+    """Trae la tenencia actual de la cuenta desde la API de IOL."""
+    url = "https://api.invertironline.com/api/v2/portafolio/argentina"
+    headers = {"Authorization": f"Bearer {token}"}
+    respuesta = requests.get(url, headers=headers)
+    respuesta.raise_for_status()
+    return respuesta.json()
