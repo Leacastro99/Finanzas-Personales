@@ -43,6 +43,6 @@ else:
         st.subheader("Resultado realizado (calculado con FIFO propio)")
         st.dataframe(realizado)
 
-       except Exception as e:
+    except Exception as e:
         st.error(f"Tipo de error: {type(e).__name__}")
         st.error(f"Detalle: {e}")
