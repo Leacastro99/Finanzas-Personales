@@ -1,12 +1,6 @@
 def calcular_fifo(lotes):
-    """
-    Aplica FIFO por símbolo sobre los lotes (compras, ventas y dividendos
-    en acciones). Devuelve:
-      - posiciones: dict {simbolo: [lotes abiertos]} -> lo que aún tenés
-      - realizado: lista de resultados de cada venta, calculados contra
-        los lotes más antiguos primero
-    """
-    lotes = lotes.sort_values("order_date")
+    """Aplica FIFO por símbolo sobre los lotes. Devuelve posiciones abiertas y resultado realizado."""
+    lotes = lotes.sort_values("fechaOperada")
     posiciones = {}
     realizado = []
 
@@ -14,21 +8,20 @@ def calcular_fifo(lotes):
         simbolo = fila["simbolo"]
         posiciones.setdefault(simbolo, [])
 
-        if fila["type"] == "Compra":
+        if fila["tipo"] == "Compra":
             posiciones[simbolo].append({
-                "cantidad": fila["quantity"],
+                "cantidad": fila["cantidadOperada"],
                 "precio": fila["precio_ajustado"],
             })
 
-        elif fila["type"] == "Pago de Dividendos":
-            # Dividendo en acciones = lote de costo cero
+        elif fila["tipo"] == "Pago de Dividendos":
             posiciones[simbolo].append({
-                "cantidad": fila["quantity"],
+                "cantidad": fila["cantidadOperada"],
                 "precio": 0.0,
             })
 
-        elif fila["type"] == "Venta":
-            cantidad_a_vender = fila["quantity"]
+        elif fila["tipo"] == "Venta":
+            cantidad_a_vender = fila["cantidadOperada"]
             precio_venta = fila["precio_ajustado"]
 
             while cantidad_a_vender > 0 and posiciones[simbolo]:
@@ -38,7 +31,7 @@ def calcular_fifo(lotes):
                 resultado = cantidad_del_lote * (precio_venta - lote["precio"])
                 realizado.append({
                     "simbolo": simbolo,
-                    "fecha": fila["order_date"],
+                    "fecha": fila["fechaOperada"],
                     "cantidad": cantidad_del_lote,
                     "precio_compra": lote["precio"],
                     "precio_venta": precio_venta,
