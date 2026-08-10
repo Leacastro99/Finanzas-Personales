@@ -36,3 +36,11 @@ def obtener_operaciones(token, fecha_desde, fecha_hasta):
     respuesta = requests.get(url, headers=headers, params=params)
     respuesta.raise_for_status()
     return respuesta.json()
+
+def obtener_estado_cuenta(token):
+    """Trae el estado de cuenta, que incluye movimientos como dividendos, renta y amortizaciones."""
+    url = "https://api.invertironline.com/api/v2/estadocuenta"
+    headers = {"Authorization": f"Bearer {token}"}
+    respuesta = requests.get(url, headers=headers)
+    respuesta.raise_for_status()
+    return respuesta.json()
