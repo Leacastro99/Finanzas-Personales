@@ -7,20 +7,22 @@ MAPEO_SIMBOLOS_D = {
     "AL29D": "AL29", "YPFDD": "YPFD", "PAMPD": "PAMP", "VISTD": "VIST",
 }
 
+SIMBOLOS_BONOS = {"AL29"}  # bonos: cotizan cada 100 de valor nominal
+
 
 def operaciones_a_tabla(operaciones_json):
-    """Convierte el JSON crudo de operaciones en una tabla limpia, filtrada y mapeada."""
+    """Convierte la lista cruda de operaciones de IOL en una tabla limpia, filtrada y mapeada."""
     tabla = pd.DataFrame(operaciones_json)
 
-    # Solo operaciones efectivamente concretadas
-    tabla = tabla[tabla["status"] == "Terminada"].copy()
+    # El estado viene en minúscula ("terminada"), por eso normalizamos con .str.lower()
+    tabla = tabla[tabla["estado"].str.lower() == "terminada"].copy()
 
     # Símbolo limpio (sin sufijo D del segmento dólar)
-    tabla["simbolo"] = tabla["symbol"].replace(MAPEO_SIMBOLOS_D)
+    tabla["simbolo"] = tabla["simbolo"].replace(MAPEO_SIMBOLOS_D)
 
-    # Ajuste de precio para bonos: cotizan cada 100 de valor nominal
+    # Ajuste de precio para bonos
     tabla["precio_ajustado"] = tabla.apply(
-        lambda fila: fila["price"] / 100 if fila["asset_type"] == "GOVERNMENT_BONDS" else fila["price"],
+        lambda fila: fila["precioOperado"] / 100 if fila["simbolo"] in SIMBOLOS_BONOS else fila["precioOperado"],
         axis=1
     )
 
@@ -28,9 +30,8 @@ def operaciones_a_tabla(operaciones_json):
 
 
 def separar_lotes_y_caja(tabla):
-    """Separa las filas que son lotes reales (compras/ventas/dividendos en
-    acciones) de las que son puro movimiento de caja (dividendos en efectivo,
-    renta, amortización)."""
-    lotes = tabla[tabla["quantity"] > 0].copy()
-    flujo_caja = tabla[tabla["quantity"] == 0].copy()
+    """Separa filas que son lotes reales (compras/ventas/dividendos en acciones)
+    de las que son puro movimiento de caja."""
+    lotes = tabla[tabla["cantidadOperada"] > 0].copy()
+    flujo_caja = tabla[tabla["cantidadOperada"] == 0].copy()
     return lotes, flujo_caja
