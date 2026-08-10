@@ -26,32 +26,11 @@ else:
     st.title("Mi Dashboard de Inversiones")
     try:
         token = obtener_token()
+        estado_cuenta = obtener_estado_cuenta(token)
 
-        portafolio = obtener_portafolio(token)
-        tabla_portafolio = portafolio_a_tabla(portafolio)
+        st.subheader("Exploración temporal: estado de cuenta crudo")
+        st.json(estado_cuenta)
 
-        operaciones = obtener_operaciones(token, "2023-01-01", "2026-08-08")
-        tabla_operaciones = operaciones_a_tabla(operaciones)
-        lotes, flujo_caja = separar_lotes_y_caja(tabla_operaciones)
-        posiciones, realizado = calcular_fifo(lotes)
-        tabla_ppc_propio = calcular_ppc_propio(posiciones)
-
-        comparacion_ppc = tabla_ppc_propio.merge(
-            tabla_portafolio[["simbolo", "cantidad", "ppc_iol"]],
-            on="simbolo",
-            how="left"
-        )
-
-        st.success("Conexión con IOL exitosa ✅")
-
-        st.subheader("PPC propio (FIFO) vs. PPC de IOL")
-        st.dataframe(comparacion_ppc)
-
-        st.subheader("Tenencia actual (según IOL)")
-        st.dataframe(tabla_portafolio)
-
-        st.subheader("Resultado realizado (FIFO propio)")
-        st.dataframe(realizado)
-
-    except Exception:
-        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
+    except Exception as e:
+        st.error(f"Tipo de error: {type(e).__name__}")
+        st.error(f"Detalle: {e}")
