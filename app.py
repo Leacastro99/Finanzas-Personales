@@ -31,9 +31,20 @@ else:
         tabla_portafolio = portafolio_a_tabla(portafolio)
 
         operaciones = obtener_operaciones(token, "2023-01-01", "2026-08-08")
+        tabla_operaciones = operaciones_a_tabla(operaciones)
+        lotes, flujo_caja = separar_lotes_y_caja(tabla_operaciones)
+        posiciones, realizado = calcular_fifo(lotes)
 
-        st.subheader("Exploración temporal: primera operación cruda")
-        st.json(operaciones[0])
+        st.success("Conexión con IOL exitosa ✅")
+
+        st.subheader("Tenencia actual (según IOL)")
+        st.dataframe(tabla_portafolio)
+
+        st.subheader("Resultado realizado (FIFO propio)")
+        st.dataframe(realizado)
+
+        st.subheader("Operaciones consideradas como flujo de caja (dividendos en efectivo, renta, amortización)")
+        st.dataframe(flujo_caja)
 
     except Exception as e:
         st.error(f"Tipo de error: {type(e).__name__}")
