@@ -30,8 +30,13 @@ def operaciones_a_tabla(operaciones_json):
 
 
 def separar_lotes_y_caja(tabla):
-    """Separa filas que son lotes reales (compras/ventas/dividendos en acciones)
-    de las que son puro movimiento de caja."""
-    lotes = tabla[tabla["cantidadOperada"] > 0].copy()
-    flujo_caja = tabla[tabla["cantidadOperada"] == 0].copy()
+    """Separa filas que son lotes reales (compras, ventas, y dividendos
+    pagados en acciones) de las que son puro flujo de caja (dividendos en
+    efectivo, renta y amortización de bonos)."""
+    es_dividendo_en_acciones = (tabla["tipo"] == "Pago de Dividendos") & (tabla["cantidadOperada"] > 0)
+    es_compra_o_venta = tabla["tipo"].isin(["Compra", "Venta"])
+
+    lotes = tabla[es_compra_o_venta | es_dividendo_en_acciones].copy()
+    flujo_caja = tabla[~(es_compra_o_venta | es_dividendo_en_acciones)].copy()
+
     return lotes, flujo_caja
