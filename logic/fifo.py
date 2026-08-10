@@ -1,3 +1,5 @@
+import pandas as pd
+
 def calcular_fifo(lotes):
     """Aplica FIFO por símbolo sobre los lotes. Devuelve posiciones abiertas y resultado realizado."""
     lotes = lotes.sort_values("fechaOperada")
@@ -44,3 +46,18 @@ def calcular_fifo(lotes):
                     posiciones[simbolo].pop(0)
 
     return posiciones, realizado
+
+def calcular_ppc_propio(posiciones):
+    """Calcula el PPC propio (promedio ponderado) a partir de los lotes FIFO abiertos."""
+    filas = []
+    for simbolo, lotes_abiertos in posiciones.items():
+        cantidad_total = sum(lote["cantidad"] for lote in lotes_abiertos)
+        if cantidad_total == 0:
+            continue
+        costo_total = sum(lote["cantidad"] * lote["precio"] for lote in lotes_abiertos)
+        filas.append({
+            "simbolo": simbolo,
+            "cantidad_fifo": cantidad_total,
+            "ppc_propio": costo_total / cantidad_total,
+        })
+    return pd.DataFrame(filas)
