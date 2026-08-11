@@ -61,3 +61,27 @@ def calcular_ppc_propio(posiciones):
             "ppc_propio": costo_total / cantidad_total,
         })
     return pd.DataFrame(filas)
+
+def calcular_resultado_no_realizado(posiciones, precios_actuales):
+    """Calcula el resultado no realizado comparando el PPC propio contra
+    el precio actual de mercado, para cada posición abierta."""
+    filas = []
+    for simbolo, lotes_abiertos in posiciones.items():
+        cantidad_total = sum(lote["cantidad"] for lote in lotes_abiertos)
+        if cantidad_total == 0:
+            continue
+        costo_total = sum(lote["cantidad"] * lote["precio"] for lote in lotes_abiertos)
+        ppc_propio = costo_total / cantidad_total
+        precio_actual = precios_actuales.get(simbolo)
+        if precio_actual is None:
+            continue
+
+        filas.append({
+            "simbolo": simbolo,
+            "cantidad": cantidad_total,
+            "ppc_propio": ppc_propio,
+            "precio_actual": precio_actual,
+            "resultado_no_realizado": (precio_actual - ppc_propio) * cantidad_total,
+            "moneda": "USD",
+        })
+    return pd.DataFrame(filas)
