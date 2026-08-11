@@ -6,7 +6,7 @@ MAPEO_SIMBOLOS_D = {
     "TSLAD": "TSLA", "SPYD": "SPY", "NUD": "NU", "LOMAD": "LOMA",
     "AL29D": "AL29", "YPFDD": "YPFD", "PAMPD": "PAMP", "VISTD": "VIST",
 }
-
+SIMBOLO_A_SUFIJO_D = {limpio: sufijo for sufijo, limpio in MAPEO_SIMBOLOS_D.items()}
 SIMBOLOS_BONOS = {"AL29"}  # bonos: cotizan cada 100 de valor nominal
 
 
