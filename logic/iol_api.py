@@ -52,3 +52,13 @@ def obtener_cotizacion(token, simbolo, mercado="bcba"):
     respuesta = requests.get(url, headers=headers)
     respuesta.raise_for_status()
     return respuesta.json()
+
+def obtener_cotizaciones_actuales(token, simbolos, mapeo_a_sufijo_d):
+    """Trae la cotización actual (en USD) para una lista de símbolos limpios,
+    traduciéndolos al símbolo con sufijo D cuando corresponda."""
+    precios = {}
+    for simbolo in simbolos:
+        simbolo_consulta = mapeo_a_sufijo_d.get(simbolo, simbolo)
+        cotizacion = obtener_cotizacion(token, simbolo_consulta)
+        precios[simbolo] = cotizacion["ultimoPrecio"]
+    return precios
