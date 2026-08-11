@@ -1,7 +1,11 @@
 import pandas as pd
 
-def calcular_fifo(lotes):
-    """Aplica FIFO por símbolo sobre los lotes. Devuelve posiciones abiertas y resultado realizado."""
+def calcular_fifo(lotes, columna_precio="precio_ajustado"):
+    """
+    Aplica FIFO por símbolo. `columna_precio` indica qué columna de precio
+    usar (por ejemplo 'precio_ajustado' para USD o 'precio_ajustado_ars'
+    para pesos), así la misma función sirve para cualquier moneda.
+    """
     lotes = lotes.sort_values("fechaOperada")
     posiciones = {}
     realizado = []
@@ -13,7 +17,7 @@ def calcular_fifo(lotes):
         if fila["tipo"] == "Compra":
             posiciones[simbolo].append({
                 "cantidad": fila["cantidadOperada"],
-                "precio": fila["precio_ajustado"],
+                "precio": fila[columna_precio],
             })
 
         elif fila["tipo"] == "Pago de Dividendos":
@@ -24,7 +28,7 @@ def calcular_fifo(lotes):
 
         elif fila["tipo"] == "Venta":
             cantidad_a_vender = fila["cantidadOperada"]
-            precio_venta = fila["precio_ajustado"]
+            precio_venta = fila[columna_precio]
 
             while cantidad_a_vender > 0 and posiciones[simbolo]:
                 lote = posiciones[simbolo][0]
@@ -83,5 +87,22 @@ def calcular_resultado_no_realizado(posiciones, precios_actuales):
             "precio_actual": precio_actual,
             "resultado_no_realizado": (precio_actual - ppc_propio) * cantidad_total,
             "moneda": "USD",
+        })
+    return pd.DataFrame(filas)
+
+def calcular_ppc_propio(posiciones):
+    """Calcula el PPC propio (promedio ponderado) y el costo total a partir
+    de los lotes FIFO abiertos."""
+    filas = []
+    for simbolo, lotes_abiertos in posiciones.items():
+        cantidad_total = sum(lote["cantidad"] for lote in lotes_abiertos)
+        if cantidad_total == 0:
+            continue
+        costo_total = sum(lote["cantidad"] * lote["precio"] for lote in lotes_abiertos)
+        filas.append({
+            "simbolo": simbolo,
+            "cantidad_fifo": cantidad_total,
+            "ppc_propio": costo_total / cantidad_total,
+            "costo_total": costo_total,
         })
     return pd.DataFrame(filas)
