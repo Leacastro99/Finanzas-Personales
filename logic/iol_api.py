@@ -44,3 +44,11 @@ def obtener_estado_cuenta(token):
     respuesta = requests.get(url, headers=headers)
     respuesta.raise_for_status()
     return respuesta.json()
+
+def obtener_cotizacion(token, simbolo, mercado="bcba"):
+    """Trae la cotización actual de un símbolo puntual."""
+    url = f"https://api.invertironline.com/api/v2/{mercado}/Titulos/{simbolo}/Cotizacion"
+    headers = {"Authorization": f"Bearer {token}"}
+    respuesta = requests.get(url, headers=headers)
+    respuesta.raise_for_status()
+    return respuesta.json()
