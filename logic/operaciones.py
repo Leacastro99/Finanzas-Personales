@@ -40,3 +40,11 @@ def separar_lotes_y_caja(tabla):
     flujo_caja = tabla[~(es_compra_o_venta | es_dividendo_en_acciones)].copy()
 
     return lotes, flujo_caja
+
+def agregar_costo_en_ars(tabla, tipos_cambio):
+    """Agrega columnas de tipo de cambio y precio ajustado en ARS a la tabla."""
+    tabla = tabla.copy()
+    tabla["fecha_corta"] = tabla["fechaOperada"].str[:10]
+    tabla["tipo_cambio"] = tabla["fecha_corta"].map(tipos_cambio)
+    tabla["precio_ajustado_ars"] = tabla["precio_ajustado"] * tabla["tipo_cambio"]
+    return tabla
