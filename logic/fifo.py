@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def calcular_fifo(lotes, columna_precio="precio_ajustado"):
     """
     Aplica FIFO por símbolo. `columna_precio` indica qué columna de precio
@@ -51,8 +52,10 @@ def calcular_fifo(lotes, columna_precio="precio_ajustado"):
 
     return posiciones, realizado
 
+
 def calcular_ppc_propio(posiciones):
-    """Calcula el PPC propio (promedio ponderado) a partir de los lotes FIFO abiertos."""
+    """Calcula el PPC propio (promedio ponderado) y el costo total a partir
+    de los lotes FIFO abiertos."""
     filas = []
     for simbolo, lotes_abiertos in posiciones.items():
         cantidad_total = sum(lote["cantidad"] for lote in lotes_abiertos)
@@ -63,8 +66,10 @@ def calcular_ppc_propio(posiciones):
             "simbolo": simbolo,
             "cantidad_fifo": cantidad_total,
             "ppc_propio": costo_total / cantidad_total,
+            "costo_total": costo_total,
         })
     return pd.DataFrame(filas)
+
 
 def calcular_resultado_no_realizado(posiciones, precios_actuales):
     """Calcula el resultado no realizado comparando el PPC propio contra
@@ -90,19 +95,27 @@ def calcular_resultado_no_realizado(posiciones, precios_actuales):
         })
     return pd.DataFrame(filas)
 
-def calcular_ppc_propio(posiciones):
-    """Calcula el PPC propio (promedio ponderado) y el costo total a partir
-    de los lotes FIFO abiertos."""
-    filas = []
-    for simbolo, lotes_abiertos in posiciones.items():
-        cantidad_total = sum(lote["cantidad"] for lote in lotes_abiertos)
-        if cantidad_total == 0:
-            continue
-        costo_total = sum(lote["cantidad"] * lote["precio"] for lote in lotes_abiertos)
-        filas.append({
-            "simbolo": simbolo,
-            "cantidad_fifo": cantidad_total,
-            "ppc_propio": costo_total / cantidad_total,
-            "costo_total": costo_total,
-        })
-    return pd.DataFrame(filas)
+
+def calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, tipo_cambio_hoy):
+    """Arma los números resumen para las tarjetas de KPI."""
+    valor_total_ars = tabla_portafolio["valorizado"].sum()
+    return {
+        "valor_total_ars": valor_total_ars,
+        "valor_total_usd": valor_total_ars / tipo_cambio_hoy,
+        "resultado_no_realizado_usd": tabla_no_realizado["resultado_no_realizado"].sum(),
+        "resultado_neto_usd": tabla_resultado_neto["resultado_neto"].sum(),
+    }
+
+
+def formatear_moneda(valor, simbolo_moneda="U$D"):
+    """Formatea un valor monetario con precisión adaptativa: sin decimales
+    para números grandes, con más decimales a medida que el número es más
+    chico (precios de acciones bajas, centavos)."""
+    valor_abs = abs(valor)
+    if valor_abs >= 1000:
+        texto = f"{valor:,.0f}"
+    elif valor_abs >= 1:
+        texto = f"{valor:,.2f}"
+    else:
+        texto = f"{valor:,.4f}"
+    return f"{simbolo_moneda} {texto}"
