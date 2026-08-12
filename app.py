@@ -84,8 +84,7 @@ else:
         evolucion = evolucion_valor_cartera(tabla_series, cantidades_actuales)
 
         # --- KPIs ---
-        tipo_cambio_hoy = obtener_tipo_cambio_mas_cercano(date.today().strftime("%Y-%m-%d"))
-        kpis = calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, tipo_cambio_hoy)
+        kpis = calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, posiciones, precios_actuales)
 
         st.success("Conexión con IOL exitosa ✅")
 
