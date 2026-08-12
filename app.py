@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import date
 from logic.iol_api import (
     obtener_token, obtener_portafolio, obtener_operaciones,
     obtener_cotizaciones_actuales, obtener_series_todas_posiciones
@@ -7,9 +8,12 @@ from logic.portafolio import portafolio_a_tabla
 from logic.operaciones import (
     operaciones_a_tabla, separar_lotes_y_caja, SIMBOLO_A_SUFIJO_D, agregar_costo_en_ars
 )
-from logic.fifo import calcular_fifo, calcular_ppc_propio, calcular_resultado_no_realizado
+from logic.fifo import (
+    calcular_fifo, calcular_ppc_propio, calcular_resultado_no_realizado,
+    calcular_kpis, formatear_moneda
+)
 from logic.dividendos import resumen_flujo_caja, resultado_neto_por_simbolo
-from logic.dolar import obtener_tipos_cambio_por_fecha
+from logic.dolar import obtener_tipos_cambio_por_fecha, obtener_tipo_cambio_mas_cercano
 from logic.evolucion import series_a_tabla, evolucion_valor_cartera
 
 
@@ -79,22 +83,67 @@ else:
         tabla_series = series_a_tabla(series_crudas)
         evolucion = evolucion_valor_cartera(tabla_series, cantidades_actuales)
 
+        # --- KPIs ---
+        tipo_cambio_hoy = obtener_tipo_cambio_mas_cercano(date.today().strftime("%Y-%m-%d"))
+        kpis = calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, tipo_cambio_hoy)
+
         st.success("Conexión con IOL exitosa ✅")
+
+        moneda_elegida = st.radio("Moneda", ["USD", "ARS"], horizontal=True)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if moneda_elegida == "USD":
+                st.metric("Valor total", formatear_moneda(kpis["valor_total_usd"]))
+            else:
+                st.metric("Valor total", formatear_moneda(kpis["valor_total_ars"], "$"))
+        with col2:
+            st.metric("No realizado (USD)", formatear_moneda(kpis["resultado_no_realizado_usd"]))
+        with col3:
+            st.metric("Realizado + renta (USD)", formatear_moneda(kpis["resultado_neto_usd"]))
 
         st.subheader("Evolución del valor de la cartera (último año, simplificado)")
         st.line_chart(evolucion.set_index("fecha")["valor"])
 
         st.subheader("Resultado NO realizado (tenencia abierta)")
-        st.dataframe(tabla_no_realizado)
+        st.dataframe(
+            tabla_no_realizado,
+            column_config={
+                "ppc_propio": st.column_config.NumberColumn("PPC propio (USD)", format="%.2f"),
+                "precio_actual": st.column_config.NumberColumn("Precio actual (USD)", format="%.2f"),
+                "resultado_no_realizado": st.column_config.NumberColumn("Result. no realizado (USD)", format="%.2f"),
+            }
+        )
 
         st.subheader("Resultado neto por símbolo (capital + renta/dividendos)")
-        st.dataframe(tabla_resultado_neto)
+        st.dataframe(
+            tabla_resultado_neto,
+            column_config={
+                "resultado_capital": st.column_config.NumberColumn("Resultado capital (USD)", format="%.2f"),
+                "flujo_caja_cobrado": st.column_config.NumberColumn("Flujo de caja (USD)", format="%.2f"),
+                "resultado_neto": st.column_config.NumberColumn("Resultado neto (USD)", format="%.2f"),
+            }
+        )
 
         st.subheader("PPC propio (USD y ARS) vs. PPC de IOL")
-        st.dataframe(comparacion_ppc)
+        st.dataframe(
+            comparacion_ppc,
+            column_config={
+                "ppc_propio": st.column_config.NumberColumn("PPC propio (USD)", format="%.2f"),
+                "costo_total": st.column_config.NumberColumn("Costo total (USD)", format="%.2f"),
+                "ppc_propio_ars": st.column_config.NumberColumn("PPC propio (ARS)", format="%.2f"),
+                "costo_total_ars": st.column_config.NumberColumn("Costo total (ARS)", format="%.2f"),
+                "ppc_iol": st.column_config.NumberColumn("PPC IOL (ARS)", format="%.2f"),
+            }
+        )
 
         st.subheader("Flujo de caja por símbolo")
-        st.dataframe(tabla_flujo_caja)
+        st.dataframe(
+            tabla_flujo_caja,
+            column_config={
+                "monto": st.column_config.NumberColumn("Monto (USD)", format="%.2f"),
+            }
+        )
 
         if fechas_fallidas:
             st.warning(f"No se pudo obtener el tipo de cambio para estas fechas: {fechas_fallidas}")
