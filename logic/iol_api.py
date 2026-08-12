@@ -71,3 +71,11 @@ def obtener_serie_historica(_token, simbolo, fecha_desde, fecha_hasta, mercado="
     respuesta = requests.get(url, headers=headers)
     respuesta.raise_for_status()
     return respuesta.json()
+
+def obtener_series_todas_posiciones(token, simbolos, mapeo_a_sufijo_d, fecha_desde, fecha_hasta, mercado="bcba"):
+    """Trae la serie histórica de precios para cada símbolo de la lista."""
+    series = {}
+    for simbolo in simbolos:
+        simbolo_consulta = mapeo_a_sufijo_d.get(simbolo, simbolo)
+        series[simbolo] = obtener_serie_historica(token, simbolo_consulta, fecha_desde, fecha_hasta, mercado)
+    return series
