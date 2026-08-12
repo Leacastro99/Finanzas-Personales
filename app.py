@@ -148,5 +148,6 @@ else:
         if fechas_fallidas:
             st.warning(f"No se pudo obtener el tipo de cambio para estas fechas: {fechas_fallidas}")
 
-    except Exception:
-        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
+ except Exception as e:
+        st.error(f"Tipo de error: {type(e).__name__}")
+        st.error(f"Detalle: {e}")
