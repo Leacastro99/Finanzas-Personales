@@ -96,12 +96,16 @@ def calcular_resultado_no_realizado(posiciones, precios_actuales):
     return pd.DataFrame(filas)
 
 
-def calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, tipo_cambio_hoy):
+def calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, posiciones, precios_actuales):
     """Arma los números resumen para las tarjetas de KPI."""
     valor_total_ars = tabla_portafolio["valorizado"].sum()
+    valor_total_usd = sum(
+        sum(lote["cantidad"] for lote in lotes) * precios_actuales.get(simbolo, 0)
+        for simbolo, lotes in posiciones.items()
+    )
     return {
         "valor_total_ars": valor_total_ars,
-        "valor_total_usd": valor_total_ars / tipo_cambio_hoy,
+        "valor_total_usd": valor_total_usd,
         "resultado_no_realizado_usd": tabla_no_realizado["resultado_no_realizado"].sum(),
         "resultado_neto_usd": tabla_resultado_neto["resultado_neto"].sum(),
     }
