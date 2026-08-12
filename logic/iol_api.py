@@ -63,11 +63,11 @@ def obtener_cotizaciones_actuales(token, simbolos, mapeo_a_sufijo_d):
         precios[simbolo] = cotizacion["ultimoPrecio"]
     return precios
 
-def obtener_serie_historica(token, simbolo, fecha_desde, fecha_hasta, mercado="bcba", ajustada="sinAjustar"):
-    """Trae la serie histórica de precios diarios de un símbolo, entre dos fechas.
-    fecha_desde/fecha_hasta en formato 'AAAA-MM-DD'."""
+@st.cache_data(ttl=3600)
+def obtener_serie_historica(_token, simbolo, fecha_desde, fecha_hasta, mercado="bcba", ajustada="sinAjustar"):
+    """Trae la serie histórica de precios diarios de un símbolo, entre dos fechas."""
     url = f"https://api.invertironline.com/api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/{fecha_desde}/{fecha_hasta}/{ajustada}"
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {_token}"}
     respuesta = requests.get(url, headers=headers)
     respuesta.raise_for_status()
     return respuesta.json()
