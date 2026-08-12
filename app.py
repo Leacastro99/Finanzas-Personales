@@ -1,5 +1,16 @@
 import streamlit as st
-from logic.iol_api import obtener_token, obtener_serie_historica
+from logic.iol_api import (
+    obtener_token, obtener_portafolio, obtener_operaciones,
+    obtener_cotizaciones_actuales, obtener_series_todas_posiciones
+)
+from logic.portafolio import portafolio_a_tabla
+from logic.operaciones import (
+    operaciones_a_tabla, separar_lotes_y_caja, SIMBOLO_A_SUFIJO_D, agregar_costo_en_ars
+)
+from logic.fifo import calcular_fifo, calcular_ppc_propio, calcular_resultado_no_realizado
+from logic.dividendos import resumen_flujo_caja, resultado_neto_por_simbolo
+from logic.dolar import obtener_tipos_cambio_por_fecha
+from logic.evolucion import series_a_tabla, evolucion_valor_cartera
 
 
 def mostrar_login():
@@ -23,13 +34,70 @@ else:
     st.title("Mi Dashboard de Inversiones")
     try:
         token = obtener_token()
-        serie = obtener_serie_historica(token, "AAPLD", "2021-01-01", "2026-08-08")
 
-        st.subheader("Exploración temporal: serie histórica cruda de AAPLD")
-        st.write(f"Cantidad de registros: {len(serie)}")
-        st.json(serie[:3])
-        st.json(serie[-3:])
+        # --- Tenencia actual (según IOL) ---
+        portafolio = obtener_portafolio(token)
+        tabla_portafolio = portafolio_a_tabla(portafolio)
 
-    except Exception as e:
-        st.error(f"Tipo de error: {type(e).__name__}")
-        st.error(f"Detalle: {e}")
+        # --- Operaciones históricas: lotes y flujo de caja ---
+        operaciones = obtener_operaciones(token, "2023-01-01", "2026-08-08")
+        tabla_operaciones = operaciones_a_tabla(operaciones)
+        lotes, flujo_caja = separar_lotes_y_caja(tabla_operaciones)
+
+        # --- FIFO en USD ---
+        posiciones, realizado = calcular_fifo(lotes, columna_precio="precio_ajustado")
+        ppc_usd = calcular_ppc_propio(posiciones)
+
+        # --- FIFO en ARS (con tipo de cambio histórico) ---
+        fechas_cortas = lotes["fechaOperada"].str[:10]
+        tipos_cambio, fechas_fallidas = obtener_tipos_cambio_por_fecha(fechas_cortas)
+        lotes_ars = agregar_costo_en_ars(lotes, tipos_cambio)
+        posiciones_ars, _ = calcular_fifo(lotes_ars, columna_precio="precio_ajustado_ars")
+        ppc_ars = calcular_ppc_propio(posiciones_ars).rename(columns={
+            "ppc_propio": "ppc_propio_ars", "costo_total": "costo_total_ars"
+        })
+
+        comparacion_ppc = ppc_usd.merge(
+            ppc_ars[["simbolo", "ppc_propio_ars", "costo_total_ars"]], on="simbolo", how="left"
+        ).merge(
+            tabla_portafolio[["simbolo", "cantidad", "ppc_iol"]], on="simbolo", how="left"
+        )
+
+        # --- Flujo de caja: dividendos, renta, amortización ---
+        tabla_flujo_caja = resumen_flujo_caja(flujo_caja)
+        tabla_resultado_neto = resultado_neto_por_simbolo(realizado, tabla_flujo_caja)
+
+        # --- Resultado no realizado (tenencia abierta) ---
+        precios_actuales = obtener_cotizaciones_actuales(token, list(posiciones.keys()), SIMBOLO_A_SUFIJO_D)
+        tabla_no_realizado = calcular_resultado_no_realizado(posiciones, precios_actuales)
+
+        # --- Evolución del valor de la cartera (último año, simplificado) ---
+        cantidades_actuales = {s: sum(l["cantidad"] for l in lts) for s, lts in posiciones.items()}
+        series_crudas = obtener_series_todas_posiciones(
+            token, list(posiciones.keys()), SIMBOLO_A_SUFIJO_D, "2025-08-08", "2026-08-08"
+        )
+        tabla_series = series_a_tabla(series_crudas)
+        evolucion = evolucion_valor_cartera(tabla_series, cantidades_actuales)
+
+        st.success("Conexión con IOL exitosa ✅")
+
+        st.subheader("Evolución del valor de la cartera (último año, simplificado)")
+        st.line_chart(evolucion.set_index("fecha")["valor"])
+
+        st.subheader("Resultado NO realizado (tenencia abierta)")
+        st.dataframe(tabla_no_realizado)
+
+        st.subheader("Resultado neto por símbolo (capital + renta/dividendos)")
+        st.dataframe(tabla_resultado_neto)
+
+        st.subheader("PPC propio (USD y ARS) vs. PPC de IOL")
+        st.dataframe(comparacion_ppc)
+
+        st.subheader("Flujo de caja por símbolo")
+        st.dataframe(tabla_flujo_caja)
+
+        if fechas_fallidas:
+            st.warning(f"No se pudo obtener el tipo de cambio para estas fechas: {fechas_fallidas}")
+
+    except Exception:
+        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
