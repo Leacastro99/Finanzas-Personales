@@ -4,7 +4,7 @@ from logic.iol_api import (
     obtener_token, obtener_portafolio, obtener_operaciones,
     obtener_cotizaciones_actuales, obtener_series_todas_posiciones
 )
-from logic.portafolio import portafolio_a_tabla
+from logic.portafolio import portafolio_a_tabla, tabla_resumen_posiciones
 from logic.operaciones import (
     operaciones_a_tabla, separar_lotes_y_caja, SIMBOLO_A_SUFIJO_D, agregar_costo_en_ars
 )
@@ -13,7 +13,7 @@ from logic.fifo import (
     calcular_kpis, formatear_moneda
 )
 from logic.dividendos import resumen_flujo_caja, resultado_neto_por_simbolo
-from logic.dolar import obtener_tipos_cambio_por_fecha, obtener_tipo_cambio_mas_cercano
+from logic.dolar import obtener_tipos_cambio_por_fecha
 from logic.evolucion import series_a_tabla, evolucion_valor_cartera
 
 
@@ -86,6 +86,9 @@ else:
         # --- KPIs ---
         kpis = calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, posiciones, precios_actuales)
 
+        # --- Tabla resumen de posiciones ---
+        tabla_resumen = tabla_resumen_posiciones(posiciones, precios_actuales, ppc_usd, kpis["valor_total_usd"])
+
         st.success("Conexión con IOL exitosa ✅")
 
         moneda_elegida = st.radio("Moneda", ["USD", "ARS"], horizontal=True)
@@ -100,6 +103,21 @@ else:
             st.metric("No realizado (USD)", formatear_moneda(kpis["resultado_no_realizado_usd"]))
         with col3:
             st.metric("Realizado + renta (USD)", formatear_moneda(kpis["resultado_neto_usd"]))
+
+        st.subheader("Posiciones")
+        st.dataframe(
+            tabla_resumen,
+            column_config={
+                "simbolo": "Activo",
+                "cantidad": st.column_config.NumberColumn("Cantidad", format="%.0f"),
+                "ppc": st.column_config.NumberColumn("PPC (USD)", format="%.2f"),
+                "precio_actual": st.column_config.NumberColumn("Precio actual (USD)", format="%.2f"),
+                "valor_usd": st.column_config.NumberColumn("Valor (USD)", format="%.2f"),
+                "pct_cartera": st.column_config.NumberColumn("% cartera", format="%.1f%%"),
+                "resultado_pct": st.column_config.NumberColumn("Resultado", format="%.1f%%"),
+            },
+            hide_index=True,
+        )
 
         st.subheader("Evolución del valor de la cartera (último año, simplificado)")
         st.line_chart(evolucion.set_index("fecha")["valor"])
