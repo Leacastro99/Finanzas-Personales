@@ -1,5 +1,5 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 from datetime import date, timedelta
 from logic.iol_api import (
     obtener_token, obtener_portafolio, obtener_operaciones,
@@ -9,17 +9,15 @@ from logic.portafolio import portafolio_a_tabla, tabla_resumen_posiciones
 from logic.operaciones import (
     operaciones_a_tabla, separar_lotes_y_caja, SIMBOLO_A_SUFIJO_D, agregar_costo_en_ars
 )
-from logic.fifo import (
-    calcular_fifo, calcular_ppc_propio, calcular_resultado_no_realizado,
-    calcular_kpis, formatear_moneda
-)
+from logic.fifo import calcular_fifo, calcular_ppc_propio, calcular_resultado_no_realizado, calcular_kpis
 from logic.dividendos import resumen_flujo_caja, resultado_neto_por_simbolo
-from logic.dolar import obtener_tipos_cambio_por_fecha
+from logic.dolar import obtener_tipos_cambio_por_fecha, obtener_tipo_cambio_mas_cercano
 from logic.evolucion import (
     series_a_tabla, evolucion_valor_cartera,
     cantidad_historica_por_fecha, evolucion_valor_cartera_real
 )
 from logic.graficos import grafico_evolucion
+from logic.moneda import convertir_a_moneda, formatear_moneda, convertir_serie_a_moneda
 
 
 def mostrar_login():
@@ -41,6 +39,7 @@ if not st.session_state["autenticado"]:
     mostrar_login()
 else:
     st.title("Mi Dashboard de Inversiones")
+
     st.markdown("""
         <style>
         [data-testid="stMetricValue"] {
@@ -51,6 +50,7 @@ else:
         }
         </style>
     """, unsafe_allow_html=True)
+
     try:
         token = obtener_token()
 
@@ -87,7 +87,6 @@ else:
         kpis = calcular_kpis(tabla_portafolio, tabla_no_realizado, tabla_resultado_neto, posiciones, precios_actuales)
         tabla_resumen = tabla_resumen_posiciones(posiciones, precios_actuales, ppc_usd, kpis["valor_total_usd"])
 
-        # --- Serie histórica: traemos 5 años de una, después filtramos por período en pantalla ---
         fecha_desde_historico = (date.today() - timedelta(days=5 * 365)).strftime("%Y-%m-%d")
         fecha_hasta_historico = date.today().strftime("%Y-%m-%d")
         series_crudas = obtener_series_todas_posiciones(
@@ -97,6 +96,9 @@ else:
         tabla_cantidades_historicas = cantidad_historica_por_fecha(lotes, fecha_desde_historico, fecha_hasta_historico)
 
         realizado_df = pd.DataFrame(realizado)
+
+        # --- Tipo de cambio de HOY: solo para valores que representan el presente (KPIs, tabla) ---
+        tipo_cambio_hoy = obtener_tipo_cambio_mas_cercano(date.today().strftime("%Y-%m-%d"))
 
         st.success("Conexión con IOL exitosa ✅")
 
@@ -118,7 +120,7 @@ else:
                     index=2
                 )
 
-            # --- Aplicar filtros de categoría y activo a la tabla ---
+            # --- Aplicar filtros de categoría y activo ---
             tabla_filtrada = tabla_resumen.merge(tabla_portafolio[["simbolo", "tipo"]], on="simbolo", how="left")
             if categoria_filtro != "Todas":
                 tabla_filtrada = tabla_filtrada[tabla_filtrada["tipo"] == categoria_filtro]
@@ -154,27 +156,36 @@ else:
 
             st.caption("Los filtros de arriba afectan a toda esta pestaña.")
 
+            # --- KPIs (siempre valores de HOY: usan tipo_cambio_hoy) ---
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Valor cartera", formatear_moneda(valor_cartera_filtrado))
+                st.metric("Valor cartera", formatear_moneda(convertir_a_moneda(valor_cartera_filtrado, moneda_filtro, tipo_cambio_hoy), moneda_filtro))
             with col2:
-                st.metric("Resultado no realizado", formatear_moneda(no_realizado_filtrado))
+                st.metric("Resultado no realizado", formatear_moneda(convertir_a_moneda(no_realizado_filtrado, moneda_filtro, tipo_cambio_hoy), moneda_filtro))
             with col3:
-                st.metric("Resultado realizado", formatear_moneda(realizado_filtrado))
+                st.metric("Resultado realizado", formatear_moneda(convertir_a_moneda(realizado_filtrado, moneda_filtro, tipo_cambio_hoy), moneda_filtro))
             with col4:
-                st.metric("Resultado total", formatear_moneda(resultado_total_filtrado))
+                st.metric("Resultado total", formatear_moneda(convertir_a_moneda(resultado_total_filtrado, moneda_filtro, tipo_cambio_hoy), moneda_filtro))
+
+            # --- Tabla (también valores de HOY: usan tipo_cambio_hoy) ---
+            tabla_mostrar = tabla_filtrada.drop(columns=["tipo"]).copy()
+            for columna in ["ppc", "precio_actual", "valor_usd", "resultado_usd"]:
+                tabla_mostrar[columna] = tabla_mostrar[columna].apply(
+                    lambda v: convertir_a_moneda(v, moneda_filtro, tipo_cambio_hoy)
+                )
+            etiqueta_moneda = "ARS" if moneda_filtro == "ARS" else "USD"
 
             st.subheader("Posiciones")
             st.dataframe(
-                tabla_filtrada.drop(columns=["tipo"]),
+                tabla_mostrar,
                 column_config={
                     "simbolo": "Activo",
                     "cantidad": st.column_config.NumberColumn("Cantidad", format="%.0f"),
-                    "ppc": st.column_config.NumberColumn("PPC (USD)", format="%.2f"),
-                    "precio_actual": st.column_config.NumberColumn("Precio actual (USD)", format="%.2f"),
-                    "valor_usd": st.column_config.NumberColumn("Valor (USD)", format="%.2f"),
+                    "ppc": st.column_config.NumberColumn(f"PPC ({etiqueta_moneda})", format="%.2f"),
+                    "precio_actual": st.column_config.NumberColumn(f"Precio actual ({etiqueta_moneda})", format="%.2f"),
+                    "valor_usd": st.column_config.NumberColumn(f"Valor ({etiqueta_moneda})", format="%.2f"),
                     "pct_cartera": st.column_config.NumberColumn("% cartera", format="%.1f%%"),
-                    "resultado_usd": st.column_config.NumberColumn("Resultado", format="%.2f"),
+                    "resultado_usd": st.column_config.NumberColumn(f"Resultado ({etiqueta_moneda})", format="%.2f"),
                     "resultado_pct": st.column_config.NumberColumn("% Resultado", format="%.1f%%"),
                 },
                 hide_index=True,
@@ -182,23 +193,34 @@ else:
 
             titulo_grafico = activo_filtro if activo_filtro != "Todos" else "Cartera"
 
-            st.subheader(f"Evolución de {titulo_grafico} — proyección con tenencia actual")
+            # --- Tipo de cambio HISTÓRICO, uno por cada fecha del rango (solo si hace falta) ---
+            if moneda_filtro == "ARS":
+                fechas_evolucion = series_filtradas["fecha"].dt.strftime("%Y-%m-%d")
+                tipos_cambio_evolucion, fechas_fallidas_evolucion = obtener_tipos_cambio_por_fecha(fechas_evolucion)
+            else:
+                tipos_cambio_evolucion, fechas_fallidas_evolucion = {}, []
+
+            # --- Gráfico 1: proyección con tenencia actual ---
             evolucion_proy = evolucion_valor_cartera(series_filtradas, cantidades_actuales_filtradas)
+            evolucion_proy = convertir_serie_a_moneda(evolucion_proy, moneda_filtro, tipos_cambio_evolucion)
+
+            st.subheader(f"Evolución de {titulo_grafico} — proyección con tenencia actual")
             if not evolucion_proy.empty:
-                st.plotly_chart(grafico_evolucion(evolucion_proy, titulo_grafico), use_container_width=True)
+                st.plotly_chart(grafico_evolucion(evolucion_proy, titulo_grafico, moneda_filtro), use_container_width=True)
             else:
                 st.info("No hay datos suficientes para el período seleccionado.")
+
+            # --- Gráfico 2: flujo real, según tus compras ---
+            evolucion_real = evolucion_valor_cartera_real(series_filtradas, cantidades_hist_filtradas)
+            evolucion_real = convertir_serie_a_moneda(evolucion_real, moneda_filtro, tipos_cambio_evolucion)
 
             st.subheader(f"Evolución de {titulo_grafico} — flujo real (según tus compras)")
-            evolucion_real = evolucion_valor_cartera_real(series_filtradas, cantidades_hist_filtradas)
             if not evolucion_real.empty:
-                st.plotly_chart(grafico_evolucion(evolucion_real, titulo_grafico), use_container_width=True)
+                st.plotly_chart(grafico_evolucion(evolucion_real, titulo_grafico, moneda_filtro), use_container_width=True)
             else:
                 st.info("No hay datos suficientes para el período seleccionado.")
 
-        # ============ PESTAÑA DETALLE (placeholder por ahora) ============
-        with tab_detalle:
-            st.info("Acá vamos a construir la comparación vs. SPY con filtro de activo, y el detalle de ganancias/pérdidas — próximo paso.")
+            if fechas_fallidas_evolucion:
+                st.warning(f"No se pudo obtener el tipo de cambio para algunas fechas del gráfico: {len(fechas_fallidas_evolucion)} días sin dato.")
 
-    except Exception:
-        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
+        # ============ PESTAÑA DETALLE (placeholder por ahora) ============
