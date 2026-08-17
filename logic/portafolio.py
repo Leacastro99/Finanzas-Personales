@@ -20,9 +20,7 @@ def portafolio_a_tabla(portafolio_json):
 
 
 def tabla_resumen_posiciones(posiciones, precios_actuales, ppc_usd, valor_total_usd):
-    """Arma la tabla principal del dashboard: una fila por posición abierta,
-    con cantidad, PPC, precio actual, % que representa sobre el total, y
-    resultado no realizado en porcentaje."""
+    """Arma la tabla principal del dashboard."""
     filas = []
     for simbolo, lotes in posiciones.items():
         cantidad = sum(lote["cantidad"] for lote in lotes)
@@ -36,6 +34,7 @@ def tabla_resumen_posiciones(posiciones, precios_actuales, ppc_usd, valor_total_
         ppc = ppc_fila["ppc_propio"].iloc[0] if not ppc_fila.empty else None
 
         valor_posicion = cantidad * precio_actual
+        resultado_usd = (precio_actual - ppc) * cantidad if ppc else None
         resultado_pct = ((precio_actual - ppc) / ppc * 100) if ppc else None
 
         filas.append({
@@ -45,6 +44,7 @@ def tabla_resumen_posiciones(posiciones, precios_actuales, ppc_usd, valor_total_
             "precio_actual": precio_actual,
             "valor_usd": valor_posicion,
             "pct_cartera": (valor_posicion / valor_total_usd * 100) if valor_total_usd else 0,
+            "resultado_usd": resultado_usd,
             "resultado_pct": resultado_pct,
         })
 
