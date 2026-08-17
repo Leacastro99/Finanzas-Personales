@@ -41,6 +41,16 @@ if not st.session_state["autenticado"]:
     mostrar_login()
 else:
     st.title("Mi Dashboard de Inversiones")
+    st.markdown("""
+        <style>
+        [data-testid="stMetricValue"] {
+            font-size: 1.6rem;
+            white-space: normal;
+            overflow-wrap: break-word;
+            line-height: 1.2;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     try:
         token = obtener_token()
 
