@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from datetime import date, timedelta
 from logic.iol_api import (
@@ -85,7 +86,7 @@ else:
         tabla_series = series_a_tabla(series_crudas)
         tabla_cantidades_historicas = cantidad_historica_por_fecha(lotes, fecha_desde_historico, fecha_hasta_historico)
 
-        realizado_df = __import__("pandas").DataFrame(realizado)
+        realizado_df = pd.DataFrame(realizado)
 
         st.success("Conexión con IOL exitosa ✅")
 
