@@ -216,5 +216,6 @@ else:
         with tab_detalle:
             st.info("Acá vamos a construir la comparación vs. SPY con filtro de activo, y el detalle de ganancias/pérdidas — próximo paso.")
 
-    except Exception:
-        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
+    except Exception as e:
+        st.error(f"Tipo de error: {type(e).__name__}")
+        st.error(f"Detalle: {e}")
