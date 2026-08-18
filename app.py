@@ -54,7 +54,6 @@ else:
     try:
         token = obtener_token()
 
-        # ============ CARGA Y CÁLCULO DE DATOS ============
         portafolio = obtener_portafolio(token)
         tabla_portafolio = portafolio_a_tabla(portafolio)
 
@@ -97,14 +96,12 @@ else:
 
         realizado_df = pd.DataFrame(realizado)
 
-        # --- Tipo de cambio de HOY: solo para valores que representan el presente (KPIs, tabla) ---
         tipo_cambio_hoy = obtener_tipo_cambio_mas_cercano(date.today().strftime("%Y-%m-%d"))
 
         st.success("Conexión con IOL exitosa ✅")
 
         tab_resumen, tab_detalle = st.tabs(["Resumen", "Detalle"])
 
-        # ============ PESTAÑA RESUMEN ============
         with tab_resumen:
             col_f1, col_f2, col_f3, col_f4 = st.columns(4)
             with col_f1:
@@ -120,7 +117,6 @@ else:
                     index=2
                 )
 
-            # --- Aplicar filtros de categoría y activo ---
             tabla_filtrada = tabla_resumen.merge(tabla_portafolio[["simbolo", "tipo"]], on="simbolo", how="left")
             if categoria_filtro != "Todas":
                 tabla_filtrada = tabla_filtrada[tabla_filtrada["tipo"] == categoria_filtro]
@@ -135,7 +131,6 @@ else:
             neto_filtrado = tabla_resultado_neto[tabla_resultado_neto["simbolo"].isin(simbolos_filtrados)]["resultado_neto"].sum()
             resultado_total_filtrado = no_realizado_filtrado + neto_filtrado
 
-            # --- Aplicar filtro de período a las series ---
             dias_por_periodo = {
                 "5 años": 5 * 365, "3 años": 3 * 365, "1 año": 365, "6 meses": 182,
                 "3 meses": 90, "1 mes": 30, "1 semana": 7, "Último día": 1
@@ -156,7 +151,6 @@ else:
 
             st.caption("Los filtros de arriba afectan a toda esta pestaña.")
 
-            # --- KPIs (siempre valores de HOY: usan tipo_cambio_hoy) ---
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Valor cartera", formatear_moneda(convertir_a_moneda(valor_cartera_filtrado, moneda_filtro, tipo_cambio_hoy), moneda_filtro))
@@ -167,7 +161,6 @@ else:
             with col4:
                 st.metric("Resultado total", formatear_moneda(convertir_a_moneda(resultado_total_filtrado, moneda_filtro, tipo_cambio_hoy), moneda_filtro))
 
-            # --- Tabla (también valores de HOY: usan tipo_cambio_hoy) ---
             tabla_mostrar = tabla_filtrada.drop(columns=["tipo"]).copy()
             for columna in ["ppc", "precio_actual", "valor_usd", "resultado_usd"]:
                 tabla_mostrar[columna] = tabla_mostrar[columna].apply(
@@ -193,14 +186,12 @@ else:
 
             titulo_grafico = activo_filtro if activo_filtro != "Todos" else "Cartera"
 
-            # --- Tipo de cambio HISTÓRICO, uno por cada fecha del rango (solo si hace falta) ---
             if moneda_filtro == "ARS":
                 fechas_evolucion = series_filtradas["fecha"].dt.strftime("%Y-%m-%d")
                 tipos_cambio_evolucion, fechas_fallidas_evolucion = obtener_tipos_cambio_por_fecha(fechas_evolucion)
             else:
                 tipos_cambio_evolucion, fechas_fallidas_evolucion = {}, []
 
-            # --- Gráfico 1: proyección con tenencia actual ---
             evolucion_proy = evolucion_valor_cartera(series_filtradas, cantidades_actuales_filtradas)
             evolucion_proy = convertir_serie_a_moneda(evolucion_proy, moneda_filtro, tipos_cambio_evolucion)
 
@@ -210,7 +201,6 @@ else:
             else:
                 st.info("No hay datos suficientes para el período seleccionado.")
 
-            # --- Gráfico 2: flujo real, según tus compras ---
             evolucion_real = evolucion_valor_cartera_real(series_filtradas, cantidades_hist_filtradas)
             evolucion_real = convertir_serie_a_moneda(evolucion_real, moneda_filtro, tipos_cambio_evolucion)
 
@@ -223,9 +213,8 @@ else:
             if fechas_fallidas_evolucion:
                 st.warning(f"No se pudo obtener el tipo de cambio para algunas fechas del gráfico: {len(fechas_fallidas_evolucion)} días sin dato.")
 
-            # ============ PESTAÑA DETALLE (placeholder por ahora) ============
-            with tab_detalle:
-                st.info("Acá vamos a construir la comparación vs. SPY con filtro de activo, y el detalle de ganancias/pérdidas — próximo paso.")
+        with tab_detalle:
+            st.info("Acá vamos a construir la comparación vs. SPY con filtro de activo, y el detalle de ganancias/pérdidas — próximo paso.")
 
     except Exception:
         st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
