@@ -1,7 +1,8 @@
 import plotly.graph_objects as go
+from logic.moneda import formatear_moneda_corta
 
 
-def grafico_evolucion(evolucion, titulo_serie="Valor"):
+def grafico_evolucion(evolucion, titulo_serie="Valor", moneda="USD"):
     """Gráfico de evolución con tooltip en cada punto y etiquetas de valor
     solo en los puntos clave: máximo, mínimo y último valor."""
     fig = go.Figure()
@@ -10,7 +11,7 @@ def grafico_evolucion(evolucion, titulo_serie="Valor"):
         x=evolucion["fecha"], y=evolucion["valor"],
         mode="lines", name=titulo_serie,
         line=dict(color="#1D9E75", width=2),
-        hovertemplate="%{x|%d %b %Y}<br>U$D %{y:,.0f}<extra></extra>",
+        hovertemplate="%{x|%d %b %Y}<br>" + formatear_moneda_corta(0, moneda).split()[0] + " %{y:,.2s}<extra></extra>",
     ))
 
     puntos_clave = {
@@ -22,7 +23,7 @@ def grafico_evolucion(evolucion, titulo_serie="Valor"):
         fig.add_trace(go.Scatter(
             x=[punto["fecha"]], y=[punto["valor"]],
             mode="markers+text",
-            text=[f"U$D {punto['valor']:,.0f}"],
+            text=[formatear_moneda_corta(punto["valor"], moneda)],
             textposition="top center",
             marker=dict(size=7, color="#1D9E75"),
             showlegend=False,
@@ -35,4 +36,5 @@ def grafico_evolucion(evolucion, titulo_serie="Valor"):
         height=300,
         hovermode="x unified",
     )
+    fig.update_yaxes(tickformat="~s")
     return fig
