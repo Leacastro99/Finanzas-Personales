@@ -113,8 +113,8 @@ else:
             with col_f4:
                 periodo_filtro = st.selectbox(
                     "Período",
-                    ["5 años", "3 años", "1 año", "6 meses", "3 meses", "1 mes", "1 semana", "Último día"],
-                    index=2
+                    ["5 años", "3 años", "2 años", "1 año", "Año actual", "6 meses", "3 meses", "1 mes", "1 semana", "Último día"],
+                    index=3
                 )
 
             tabla_filtrada = tabla_resumen.merge(tabla_portafolio[["simbolo", "tipo"]], on="simbolo", how="left")
@@ -132,10 +132,13 @@ else:
             resultado_total_filtrado = no_realizado_filtrado + neto_filtrado
 
             dias_por_periodo = {
-                "5 años": 5 * 365, "3 años": 3 * 365, "1 año": 365, "6 meses": 182,
-                "3 meses": 90, "1 mes": 30, "1 semana": 7, "Último día": 1
+                "5 años": 5 * 365, "3 años": 3 * 365, "2 años": 2 * 365, "1 año": 365,
+                "6 meses": 182, "3 meses": 90, "1 mes": 30, "1 semana": 7, "Último día": 1
             }
-            fecha_desde_periodo = date.today() - timedelta(days=dias_por_periodo[periodo_filtro])
+            if periodo_filtro == "Año actual":
+                fecha_desde_periodo = date(date.today().year, 1, 1)
+            else:
+                fecha_desde_periodo = date.today() - timedelta(days=dias_por_periodo[periodo_filtro])
 
             series_filtradas = tabla_series[
                 (tabla_series["simbolo"].isin(simbolos_filtrados)) &
@@ -216,6 +219,5 @@ else:
         with tab_detalle:
             st.info("Acá vamos a construir la comparación vs. SPY con filtro de activo, y el detalle de ganancias/pérdidas — próximo paso.")
 
-    except Exception as e:
-        st.error(f"Tipo de error: {type(e).__name__}")
-        st.error(f"Detalle: {e}")
+    except Exception:
+        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
