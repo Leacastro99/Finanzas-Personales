@@ -224,3 +224,8 @@ else:
                 st.warning(f"No se pudo obtener el tipo de cambio para algunas fechas del gráfico: {len(fechas_fallidas_evolucion)} días sin dato.")
 
         # ============ PESTAÑA DETALLE (placeholder por ahora) ============
+        with tab_detalle:
+            st.info("Acá vamos a construir la comparación vs. SPY con filtro de activo, y el detalle de ganancias/pérdidas — próximo paso.")
+
+    except Exception:
+        st.error("No se pudo conectar con IOL. Revisá las credenciales configuradas.")
